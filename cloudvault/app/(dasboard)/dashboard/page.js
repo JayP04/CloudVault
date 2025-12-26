@@ -11,6 +11,7 @@ export default async function DashboardPage() {
     .from('files')
     .select('*')
     .eq('owner_id', user.id)
+    .is('deleted_at', null)
     .order('effective_date', { ascending: false })
 
   return (
