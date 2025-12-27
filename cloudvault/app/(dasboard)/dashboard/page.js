@@ -14,6 +14,8 @@ export default async function DashboardPage() {
     .is('deleted_at', null)
     .order('effective_date', { ascending: false })
 
+  const uploadedcontent = searchParams?.uploaded ? parseInt(searchParams.uploaded) : null
+
   return (
     <div className="space-y-8">
       {/* Upload Button */}
