@@ -2,20 +2,147 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
 
 export default function Sidebar({ user }) {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
-  const [uploadOpen, setUploadOpen] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(null)
+  const [dragActive, setDragActive] = useState(false)
 
   async function handleLogout() {
     await supabase.auth.signOut()
     router.push('/login')
     router.refresh()
+  }
+
+  async function handleUpload(files) {
+    if (files.length === 0) return
+    
+    setUploading(true)
+    setUploadProgress(`Uploading ${files.length} file${files.length > 1 ? 's' : ''}...`)
+    
+    try {
+      // Import exifr for EXIF extraction
+      const exifr = (await import('exifr')).default
+      
+      let successCount = 0
+      
+      for (const file of files) {
+        try {
+          // Extract EXIF date
+          let exifDate = null
+          if (file.type.startsWith('image/')) {
+            try {
+              const exif = await exifr.parse(file)
+              if (exif?.DateTimeOriginal) {
+                exifDate = new Date(exif.DateTimeOriginal).toISOString()
+              }
+            } catch (err) {
+              console.log('Could not extract EXIF:', err)
+            }
+          }
+
+          setUploadProgress(`Uploading ${file.name}...`)
+
+          // Request signed upload URL
+          const uploadRequest = await fetch('/api/files/upload-request', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              filename: file.name,
+              mimeType: file.type,
+              fileSize: file.size,
+              exifDate,
+            }),
+          })
+
+          if (!uploadRequest.ok) {
+            throw new Error('Failed to get upload URL')
+          }
+
+          const { uploadUrl, fileId, storageKey, metadata } = await uploadRequest.json()
+
+          // Upload file to R2
+          const uploadResponse = await fetch(uploadUrl, {
+            method: 'PUT',
+            body: file,
+            headers: {
+              'Content-Type': file.type,
+            },
+          })
+
+          if (!uploadResponse.ok) {
+            throw new Error('Failed to upload file')
+          }
+
+          // Confirm upload
+          const confirmResponse = await fetch('/api/files/confirm-upload', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              fileId,
+              storageKey,
+              metadata,
+            }),
+          })
+
+          if (!confirmResponse.ok) {
+            throw new Error('Failed to confirm upload')
+          }
+
+          successCount++
+        } catch (error) {
+          console.error(`Failed to upload ${file.name}:`, error)
+        }
+      }
+
+      setUploadProgress(`${successCount} file${successCount > 1 ? 's' : ''} uploaded!`)
+      
+      setTimeout(() => {
+        setUploading(false)
+        setUploadProgress(null)
+        router.refresh()
+      }, 2000)
+
+    } catch (error) {
+      console.error('Upload error:', error)
+      setUploadProgress('Upload failed')
+      setTimeout(() => {
+        setUploading(false)
+        setUploadProgress(null)
+      }, 3000)
+    }
+  }
+
+  function handleDragOver(e) {
+    e.preventDefault()
+    e.stopPropagation()
+    setDragActive(true)
+  }
+
+  function handleDragLeave(e) {
+    e.preventDefault()
+    e.stopPropagation()
+    setDragActive(false)
+  }
+
+  function handleDrop(e) {
+    e.preventDefault()
+    e.stopPropagation()
+    setDragActive(false)
+    
+    const files = Array.from(e.dataTransfer.files)
+    const validFiles = files.filter(f => 
+      f.type.startsWith('image/') || f.type.startsWith('video/')
+    )
+    
+    if (validFiles.length > 0) {
+      handleUpload(validFiles)
+    }
   }
 
   const navigation = [
@@ -42,7 +169,24 @@ export default function Sidebar({ user }) {
   return (
     <>
       {/* Desktop Sidebar */}
-      <div className="hidden lg:flex lg:flex-col lg:w-64 lg:border-r lg:border-zinc-200 lg:bg-white">
+      <div 
+        className="hidden lg:flex lg:flex-col lg:w-64 lg:border-r lg:border-zinc-200 lg:bg-white relative"
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
+        {/* Drag Overlay */}
+        {dragActive && (
+          <div className="absolute inset-0 bg-blue-500/10 border-4 border-dashed border-blue-500 rounded-lg z-50 flex items-center justify-center">
+            <div className="text-center">
+              <svg className="w-16 h-16 mx-auto text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+              <p className="text-lg font-semibold text-blue-700 mt-4">Drop to upload</p>
+            </div>
+          </div>
+        )}
+
         {/* Logo */}
         <div className="flex items-center h-16 px-6 border-b border-zinc-200">
           <div className="flex items-center space-x-3">
@@ -77,24 +221,48 @@ export default function Sidebar({ user }) {
             )
           })}
 
-          {/* Upload Button */}
+          {/* Upload Section */}
           <div className="pt-4">
-            <label
-              htmlFor="sidebar-upload"
-              className="flex items-center justify-center px-4 py-3 text-sm font-semibold text-white rounded-lg cursor-pointer btn-primary w-full"
-            >
-              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-              </svg>
-              Upload
-            </label>
             <input
               type="file"
               id="sidebar-upload"
               className="hidden"
               multiple
               accept="image/*,video/*"
+              disabled={uploading}
+              onChange={(e) => {
+                const files = Array.from(e.target.files || [])
+                handleUpload(files)
+              }}
             />
+            
+            <label
+              htmlFor="sidebar-upload"
+              className={`flex items-center justify-center px-4 py-3 text-sm font-semibold text-white rounded-lg cursor-pointer bg-gradient-to-r from-blue-700 to-sky-600 hover:from-blue-800 hover:to-sky-700 transition-all shadow-md hover:shadow-lg w-full ${
+                uploading ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
+            >
+              {uploading ? (
+                <>
+                  <svg className="animate-spin w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <span className="text-xs">{uploadProgress}</span>
+                </>
+              ) : (
+                <>
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                  </svg>
+                  Upload
+                </>
+              )}
+            </label>
+            
+            <p className="text-xs text-center text-zinc-500 mt-2">
+              or drag files here
+            </p>
           </div>
         </nav>
 
@@ -159,6 +327,11 @@ export default function Sidebar({ user }) {
             className="hidden"
             multiple
             accept="image/*,video/*"
+            disabled={uploading}
+            onChange={(e) => {
+              const files = Array.from(e.target.files || [])
+              handleUpload(files)
+            }}
           />
           
           {/* Profile */}
