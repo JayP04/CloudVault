@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import UploadButton from '@/components/UploadButton'
 import PhotoGallery from '@/components/PhotoGallery'
 
-export default async function DashboardPage() {
+export default async function DashboardPage({ searchParams }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
