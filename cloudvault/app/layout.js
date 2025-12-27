@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 export const metadata = {
   title: "CloudVault",
   description: "App to securely store and manage your files.",
-    manifest: '/manifest.json',
+  manifest: '/manifest.json',
   themeColor: '#1E40AF',
   appleWebApp: {
     capable: true,
