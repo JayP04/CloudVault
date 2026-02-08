@@ -17,6 +17,7 @@ gotta do
     
 
 ### Improvements
+- [x] Landing page
 - [ ] Faster rendering times
 - [ ] Optimize images for web
 - 
