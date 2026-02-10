@@ -14,13 +14,16 @@ gotta do
         - [ ] having multiple files uploaded at once
         - [ ] handling different media types 
         - [ ] storing files with accurate EXIF metadata
+- [ ] cloudflare storage session limit
+    - [ ] per user limit per "plan"
+    - [ ] Privacy and security considerations for user meta data
     
 
 ### Improvements
 - [x] Landing page
 - [ ] Faster rendering times
 - [ ] Optimize images for web
-- 
+
 
 ### Bug Fixes
 - [ ] 
