@@ -1,0 +1,122 @@
+@import "tailwindcss";
+
+/* ─── Custom Properties ────────────────────────────────────────────────── */
+
+:root {
+  --color-brand: #0A84FF;
+  --color-brand-hover: #0070E0;
+  --radius: 12px;
+  --bg-primary: #000000;
+  --bg-secondary: #1c1c1e;
+  --bg-tertiary: #2c2c2e;
+  --bg-elevated: #3a3a3c;
+  --text-primary: #ffffff;
+  --text-secondary: #98989d;
+  --text-tertiary: #636366;
+  --border: rgba(255, 255, 255, 0.08);
+}
+
+/* ─── Base ─────────────────────────────────────────────────────────────── */
+
+html {
+  scroll-behavior: smooth;
+  -webkit-tap-highlight-color: transparent;
+  color-scheme: dark;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
+    system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+/* ─── Scrollbar ────────────────────────────────────────────────────────── */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* ─── Utilities ────────────────────────────────────────────────────────── */
+
+.blur-hash-placeholder {
+  image-rendering: pixelated;
+  filter: blur(20px);
+  transform: scale(1.1);
+}
+
+@keyframes shimmer {
+  0% { background-position: -600px 0; }
+  100% { background-position: 600px 0; }
+}
+
+.skeleton {
+  animation: shimmer 1.5s infinite linear;
+  background: linear-gradient(
+    to right,
+    #1c1c1e 0%,
+    #2c2c2e 20%,
+    #1c1c1e 40%,
+    #1c1c1e 100%
+  );
+  background-size: 600px 100%;
+}
+
+/* ─── Safe area for mobile (PWA / Capacitor) ──────────────────────────── */
+
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.safe-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* ─── Prevent image drag ──────────────────────────────────────────────── */
+
+.select-none img {
+  -webkit-user-drag: none;
+}
+
+/* ─── PIN pad shake animation ─────────────────────────────────────────── */
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-8px); }
+  75% { transform: translateX(8px); }
+}
+.animate-shake {
+  animation: shake 0.3s ease-in-out;
+}
+
+/* ─── Fade in animation for photo viewer ──────────────────────────────── */
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.animate-fade-in {
+  animation: fadeIn 0.2s ease-out;
+}
+
+/* ─── Photo grid hover ────────────────────────────────────────────────── */
+
+.photo-cell {
+  transition: filter 0.15s ease;
+}
+.photo-cell:hover {
+  filter: brightness(1.1);
+}
